@@ -1302,13 +1302,11 @@ function toggle(idx) {
   document.getElementById('modalContent').innerHTML = h;
   document.getElementById('stageModal').classList.add('open');
   document.getElementById('modalBox').scrollTop = 0;
-  document.body.style.overflow = 'hidden';
+  // Do NOT lock body scroll — keeps sticky nav working
 }
 
 function closeModal() {
   document.getElementById('stageModal').classList.remove('open');
-  document.body.style.overflow = '';
-  // deselect active card
   document.querySelectorAll('.stage-card').forEach(c => c.classList.remove('active'));
   activeIdx = null;
 }
@@ -1335,9 +1333,185 @@ function scrollToPhase(id, btn) {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// Print / Save as PDF
+// Print / Save as PDF — opens a full print window with ALL stages expanded
 function printGuide() {
-  window.print();
+  // Build full expanded content for every stage
+  let printHTML = `<!DOCTYPE html><html><head>
+<meta charset="UTF-8">
+<title>ZTT Partnership Sales Builder's Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; color: #1a1a18; background: #fff; padding: 24px; font-size: 12px; line-height: 1.5; }
+  .print-header { background: #003F6B; color: #fff; padding: 20px 24px; border-radius: 10px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .print-header h1 { font-family: 'DM Serif Display', serif; font-size: 22px; margin-bottom: 4px; }
+  .print-header p { font-size: 11px; opacity: 0.75; }
+  .phase-section { margin-bottom: 28px; break-inside: avoid; }
+  .phase-heading { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8a84; border-bottom: 1px solid #e8e5de; padding-bottom: 6px; margin-bottom: 12px; }
+  .stage-block { border: 1px solid #dedad2; border-radius: 8px; margin-bottom: 12px; overflow: hidden; break-inside: avoid; }
+  .stage-block-header { background: #f2f0eb; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+  .stage-num-print { font-size: 10px; font-weight: 500; color: #8a8a84; }
+  .stage-title-print { font-size: 13px; font-weight: 500; color: #1a1a18; flex: 1; }
+  .badge-print { font-size: 9px; font-weight: 500; padding: 2px 8px; border-radius: 99px; background: #e6f0fb; color: #185fa5; }
+  .stage-detail { padding: 12px 14px; }
+  .checklist { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+  .checklist li { font-size: 11px; color: #4a4a46; padding-left: 16px; position: relative; line-height: 1.5; }
+  .checklist li::before { content: "→"; position: absolute; left: 0; color: #c2c0b6; font-size: 10px; }
+  .checklist li.strong { color: #1a1a18; font-weight: 500; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 6px; }
+  .col-label { font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #8a8a84; margin-bottom: 6px; }
+  .wf-block { border-radius: 6px; padding: 10px 12px; margin-top: 10px; }
+  .wf-block.research { background: #faeee6; border: 1px solid #f0c5ad; }
+  .wf-block.plaud { background: #eeedf8; border: 1px solid #ccc9ef; }
+  .wf-block.ai { background: #fdf3de; border: 1px solid #f0d9a0; }
+  .wf-block.gamma { background: #e0f5ee; border: 1px solid #a8dece; }
+  .wf-title { font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+  .wf-title.research { color: #c05a2a; } .wf-title.plaud { color: #4a4580; } .wf-title.ai { color: #9a6a10; } .wf-title.gamma { color: #1d6e5a; }
+  .magic-box { background: #eeedf8; border: 1px solid #ccc9ef; border-left: 3px solid #4a4580; border-radius: 6px; padding: 10px 12px; margin-top: 10px; }
+  .magic-label { font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #4a4580; margin-bottom: 6px; }
+  .magic-q { font-size: 11px; color: #1a1a18; line-height: 1.5; margin-bottom: 5px; font-style: italic; }
+  .magic-q::before { content: "✦ "; color: #4a4580; font-style: normal; font-size: 10px; }
+  .prompt-wrap { background: #faf9f6; border: 1px solid #dedad2; border-left: 3px solid #9a6a10; border-radius: 6px; padding: 10px 12px; margin-top: 8px; }
+  .prompt-label-text { font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #9a6a10; margin-bottom: 6px; }
+  .prompt-text { font-family: 'Courier New', monospace; font-size: 10px; color: #4a4a46; line-height: 1.6; white-space: pre-wrap; }
+  .fork-row { display: flex; gap: 8px; margin-top: 10px; }
+  .fork-branch { flex: 1; border: 1px dashed #dedad2; border-radius: 6px; padding: 8px 10px; }
+  .fork-lbl { font-size: 9px; font-weight: 500; color: #8a8a84; margin-bottom: 3px; }
+  .fork-txt { font-size: 11px; color: #4a4a46; }
+  .section-sep { font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #8a8a84; margin: 12px 0 8px; padding-top: 10px; border-top: 1px solid #e8e5de; }
+  .print-footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e8e5de; text-align: center; font-size: 10px; color: #8a8a84; }
+  @media print { body { padding: 12px; } .phase-section { break-inside: avoid; } }
+</style></head><body>`;
+
+  printHTML += `<div class="print-header">
+    <div>
+      <h1>ZTT Partnership Sales Builder's Guide</h1>
+      <p>A builder's guide to partnership-driven sales — for trainers becoming visionary advocates</p>
+    </div>
+  </div>`;
+
+  const phaseNames = [
+    'Phase 1 — Lead Intake',
+    'Phase 2 — Discovery',
+    'Phase 3 — Proposal',
+    'Phase 4 — Contract',
+    'Phase 5 — Onboarding',
+    'Phase 6 — Delivery',
+    'Phase 7 — Growth'
+  ];
+  const phaseMap = [0,0,1,1,2,2,3,3,4,4,5,5,6,6]; // which phase each stage belongs to
+  const stageNums = ['01','02','03','04','05','06','07','08','09','10','11','12','13','14'];
+
+  let currentPhase = -1;
+
+  stages.forEach((s, idx) => {
+    const phase = phaseMap[idx];
+    if (phase !== currentPhase) {
+      if (currentPhase !== -1) printHTML += `</div>`;
+      printHTML += `<div class="phase-section"><div class="phase-heading">${phaseNames[phase]}</div>`;
+      currentPhase = phase;
+    }
+
+    printHTML += `<div class="stage-block">
+      <div class="stage-block-header">
+        <span class="stage-num-print">${stageNums[idx]}</span>
+        <span class="stage-title-print">${s.title}</span>
+        <span class="badge-print">${s.badge}</span>
+      </div>
+      <div class="stage-detail">`;
+
+    // Research block
+    if (s.researchBlock) {
+      printHTML += `<div class="wf-block research"><div class="wf-title research">◎ Pre-call research — do this before you dial</div>
+        <ul class="checklist">
+          <li class="strong">Identify which ZTT program sparked their interest — read it before the call</li>
+          <li>Review the client's website, strategic plan, annual report, or social presence</li>
+          <li>Note their stated mission, values, and language about their team culture</li>
+          <li>Look for recent initiatives, awards, challenges, or leadership changes</li>
+          <li>Identify the population they serve — this shapes how you frame the PD impact</li>
+          <li>Come prepared with 1–2 reflections that show you did your homework</li>
+        </ul></div>`;
+    }
+
+    // PLAUD block
+    if (s.plaudBlock) {
+      printHTML += `<div class="wf-block plaud"><div class="wf-title plaud">● PLAUD recording workflow</div>
+        <ul class="checklist">
+          <li>Start PLAUD before the call begins</li>
+          <li>Let it run the full call — don't stop/start</li>
+          <li>Export transcript after the call ends</li>
+          <li>Paste into Word — highlight north star quotes and asset language</li>
+          <li>Clean up: remove filler, fix names, flag magic wand moments</li>
+        </ul></div>`;
+    }
+
+    // Magic wand
+    if (s.magicWandBlock) {
+      printHTML += `<div class="magic-box"><div class="magic-label">✦ Magic wand questions — ask these, then listen deeply</div>
+        <div class="magic-q">If you had a magic wand, what would you want the outcome to be after your team experiences these learning opportunities?</div>
+        <div class="magic-q">What does it look like when you walk into the room? What does it feel like? How are people showing up differently with one another?</div>
+        <div class="magic-q">Is there a shared vision — a north star — guiding your team's work this year? What theme or word captures where you're headed?</div>
+        <div class="magic-q">What assets and strengths does your team already bring that we should absolutely build on?</div>
+        <div class="magic-q">What drew you to this particular ZTT program — what was the moment you thought "this is what we need"?</div>
+      </div>`;
+    }
+
+    // Two-column
+    if (s.left && s.right) {
+      if (s.researchBlock || s.plaudBlock) printHTML += `<div class="section-sep">Discovery framework</div>`;
+      printHTML += `<div class="cols">
+        <div><div class="col-label">${s.left.label}</div><ul class="checklist">${s.left.items.map(i=>`<li>${i}</li>`).join('')}</ul></div>
+        <div><div class="col-label">${s.right.label}</div><ul class="checklist">${s.right.items.map(i=>`<li>${i}</li>`).join('')}</ul></div>
+      </div>`;
+    } else if (s.actions) {
+      printHTML += `<ul class="checklist">${s.actions.map(a=>`<li>${a}</li>`).join('')}</ul>`;
+    }
+
+    // AI prompt
+    if (s.aiBlock) {
+      printHTML += `<div class="section-sep">AI-assisted drafting workflow</div>
+      <div class="wf-block ai"><div class="wf-title ai">◆ Generate proposal text with AI — paste your PLAUD notes at the bottom</div>
+        <ul class="checklist">
+          <li>Export cleaned PLAUD notes from Word</li>
+          <li>Open Claude, ChatGPT, or your preferred LLM</li>
+          <li>Use the prompt below — fill in the variables, paste your notes at the bottom</li>
+        </ul>
+      <div class="prompt-wrap"><div class="prompt-label-text">AI prompt template</div>
+      <div class="prompt-text">${PROMPT_TEXT}</div></div></div>`;
+    }
+
+    // Gamma
+    if (s.gammaBlock) {
+      printHTML += `<div class="wf-block gamma"><div class="wf-title gamma">✦ Build the visual proposal in Gamma.app</div>
+        <ul class="checklist">
+          <li>Open Gamma.app → "Create with AI"</li>
+          <li>Paste the AI-generated proposal text</li>
+          <li>Choose a clean theme matching ZTT brand</li>
+          <li>Review each slide, add ZTT logo</li>
+          <li>Share via Gamma link or export as PDF</li>
+        </ul></div>`;
+    }
+
+    // Fork
+    if (s.fork) {
+      printHTML += `<div class="fork-row">
+        <div class="fork-branch"><div class="fork-lbl">✓ Approved</div><div class="fork-txt">${s.fork.yes}</div></div>
+        <div class="fork-branch"><div class="fork-lbl">× No response</div><div class="fork-txt">${s.fork.no}</div></div>
+      </div>`;
+    }
+
+    printHTML += `</div></div>`; // close stage-detail and stage-block
+  });
+
+  printHTML += `</div>`; // close last phase-section
+  printHTML += `<div class="print-footer">Zero to Three &nbsp;·&nbsp; Professional Development Partnership &nbsp;·&nbsp; zerotothree.org &nbsp;·&nbsp; Book a session: calendly.com/lwilson-zerotothree/30min</div>`;
+  printHTML += `</body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(printHTML);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 800);
 }
 
 // Close modal on Escape key
@@ -1345,11 +1519,29 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
 });
 
-// Scroll progress bar
+// Scroll progress bar + auto-highlight nav tab
 window.addEventListener('scroll', () => {
   const el = document.documentElement;
   const pct = (el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100;
   document.getElementById('scrollBar').style.width = pct + '%';
+
+  // Auto-highlight top nav tab based on scroll position
+  const phases = ['phase-1','phase-2','phase-3','phase-4','phase-5','phase-6','phase-7'];
+  let current = 'phase-1';
+  phases.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top <= 80) current = id;
+  });
+  const tabs = document.querySelectorAll('.phase-tab');
+  tabs.forEach((t, i) => t.classList.toggle('active', phases[i] === current));
+});
+
+// Make modal close button work for dynamically built copyPrompt inside modal
+document.addEventListener('click', e => {
+  if (e.target && e.target.id === 'copyLabel') return;
+  if (e.target && e.target.closest && e.target.closest('.copy-btn')) {
+    copyPrompt();
+  }
 });
 </script>
 </body>
